@@ -4,14 +4,8 @@ const {
     google
 } = require('googleapis');
 
-let todayEvents = [];
-
 // ***** GOOGLE CALENDAR API *****
-// If modifying these scopes, delete token.json.
 const SCOPES = ['https://www.googleapis.com/auth/calendar.readonly'];
-// The file token.json stores the user's access and refresh tokens, and is
-// created automatically when the authorization flow completes for the first
-// time.
 const TOKEN_PATH = 'token.json';
 
 // Load client secrets from a local file.
@@ -21,12 +15,6 @@ fs.readFile('./bin/credentials.json', (err, content) => {
     authorize(JSON.parse(content), getAllCalendars);
 });
 
-/**
- * Create an OAuth2 client with the given credentials, and then execute the
- * given callback function.
- * @param {Object} credentials The authorization client credentials.
- * @param {function} callback The callback to call with the authorized client.
- */
 function authorize(credentials, callback) {
     const {
         client_secret,
@@ -44,12 +32,6 @@ function authorize(credentials, callback) {
     });
 }
 
-/**
- * Get and store new token after prompting for user authorization, and then
- * execute the given callback with the authorized OAuth2 client.
- * @param {google.auth.OAuth2} oAuth2Client The OAuth2 client to get token for.
- * @param {getEventsCallback} callback The callback for the authorized client.
- */
 function getAccessToken(oAuth2Client, callback) {
     const authUrl = oAuth2Client.generateAuthUrl({
         access_type: 'offline',
@@ -76,21 +58,16 @@ function getAccessToken(oAuth2Client, callback) {
 }
 
 function getAllCalendars(auth) {
-    let promise = new Promise((resolve, reject) => {
-        const gcal = google.calendar({
-            version: 'v3',
-            auth
-        });
-        gcal.calendarList.list({
-            auth
-        }, function (err, userCalendarList) {
-            if (err) console.log(err)
-            else filterCalendars(userCalendarList.data.items, gcal)
-        });
+    const gcal = google.calendar({
+        version: 'v3',
+        auth
     });
-    promise.then((result) => {
-        console.log(result);
-    })
+    gcal.calendarList.list({
+        auth
+    }, function (err, userCalendarList) {
+        if (err) console.log(err)
+        else filterCalendars(userCalendarList.data.items, gcal)
+    });
 }
 
 function filterCalendars(calendars, gcal) {
@@ -105,8 +82,8 @@ function filterCalendars(calendars, gcal) {
     getAllEvents(filteredCalendars, gcal);
 }
 
-async function getAllEvents(calendars, gcal) {
-    // let todayEvents = [];
+function getAllEvents(calendars, gcal) {
+    let todayEvents = [];
     calendars.forEach(function (cal) {
         let date = new Date();
         date.setTime(date.getTime() + (25 * 60 * 60 * 1000));
@@ -117,15 +94,19 @@ async function getAllEvents(calendars, gcal) {
             timeMax: date,
             orderBy: 'startTime',
             singleEvents: true
-        }, async function (err, response) {
+        }, function (err, response) {
             if (err) console.log(err)
-            else events = await response.data.items;
+            else events = response.data.items;
             events.forEach(function (event) {
                 todayEvents.push(cal.summary + ': ' + event.summary);
             });
         })
     });
-    return todayEvents.join(', ');
+    finished(todayEvents);
 }
 
-// console.log(getAllEvents());
+function finished(result) {
+    setTimeout(() => {
+        console.log(result);
+    }, 500);
+}
