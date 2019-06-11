@@ -1,31 +1,26 @@
 const fs = require('fs');
 const readline = require('readline');
-const {google} = require('googleapis');
+const {
+  google
+} = require('googleapis');
 
-// If modifying these scopes, delete token.json.
 const SCOPES = ['https://www.googleapis.com/auth/calendar.readonly'];
-// The file token.json stores the user's access and refresh tokens, and is
-// created automatically when the authorization flow completes for the first
-// time.
 const TOKEN_PATH = 'token.json';
+let authToken;
 
-// Load client secrets from a local file.
 fs.readFile('./bin/credentials.json', (err, content) => {
   if (err) return console.log('Error loading client secret file:', err);
-  // Authorize a client with credentials, then call the Google Calendar API.
-  authorize(JSON.parse(content), listEvents);
+  authorize(JSON.parse(content), setAuthToken);
 });
 
-/**
- * Create an OAuth2 client with the given credentials, and then execute the
- * given callback function.
- * @param {Object} credentials The authorization client credentials.
- * @param {function} callback The callback to call with the authorized client.
- */
 function authorize(credentials, callback) {
-  const {client_secret, client_id, redirect_uris} = credentials.installed;
+  const {
+    client_secret,
+    client_id,
+    redirect_uris
+  } = credentials.installed;
   const oAuth2Client = new google.auth.OAuth2(
-      client_id, client_secret, redirect_uris[0]);
+    client_id, client_secret, redirect_uris[0]);
 
   // Check if we have previously stored a token.
   fs.readFile(TOKEN_PATH, (err, token) => {
@@ -35,15 +30,23 @@ function authorize(credentials, callback) {
   });
 }
 
-/**
- * Get and store new token after prompting for user authorization, and then
- * execute the given callback with the authorized OAuth2 client.
- * @param {google.auth.OAuth2} oAuth2Client The OAuth2 client to get token for.
- * @param {getEventsCallback} callback The callback for the authorized client.
- */
+
+// *******************
+// 
+//  
+async function setAuthToken(oAuth2Client) {
+  authToken = oAuth2Client;
+  const cals = await getCalendarsAndFilter(authToken);
+  const events = await getEvents(authToken, cals);
+  return events;
+}
+// 
+// 
+// **********************
+
 function getAccessToken(oAuth2Client, callback) {
   const authUrl = oAuth2Client.generateAuthUrl({
-    access_type: 'offline',
+    access_type: 'online',
     scope: SCOPES,
   });
   console.log('Authorize this app by visiting this url:', authUrl);
@@ -66,29 +69,46 @@ function getAccessToken(oAuth2Client, callback) {
   });
 }
 
-/**
- * Lists the next 10 events on the user's primary calendar.
- * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
- */
-function listEvents(auth) {
-  const calendar = google.calendar({version: 'v3', auth});
-  calendar.events.list({
-    calendarId: 'primary',
-    timeMin: (new Date()).toISOString(),
-    maxResults: 10,
-    singleEvents: true,
-    orderBy: 'startTime',
-  }, (err, res) => {
-    if (err) return console.log('The API returned an error: ' + err);
-    const events = res.data.items;
-    if (events.length) {
-      console.log('Upcoming 10 events:');
-      events.map((event, i) => {
-        const start = event.start.dateTime || event.start.date;
-        console.log(`${start} - ${event.summary}`);
-      });
-    } else {
-      console.log('No upcoming events found.');
+
+async function getCalendarsAndFilter(auth) {
+  const calendar = google.calendar({
+    version: 'v3',
+    auth
+  });
+  let allCalendars = [];
+  const result = await calendar.calendarList.list();
+  await result.data.items.forEach(function (cal) {
+    if ((cal.summary.indexOf("Contact") < 0)) {
+      if ((cal.summary.indexOf("Holiday") < 0)) {
+        5
+        allCalendars.push(cal);
+      }
     }
   });
+  return allCalendars;
+}
+
+async function getEvents(auth, calendars) {
+  let todayEvents = [];
+  const calendar = google.calendar({
+    version: 'v3',
+    auth
+  });
+  calendars.forEach(async function (cal) {
+    let date = new Date();
+    date.setTime(date.getTime() + (25 * 60 * 60 * 1000)); //search 25 hrs from now
+    date.toISOString();
+    const result = await calendar.events.list({
+      calendarId: cal.id,
+      timeMin: (new Date()).toISOString(),
+      timeMax: date,
+      orderBy: 'startTime',
+      singleEvents: true
+    });
+    const events = await result.data.items;
+    events.forEach(function (event) {
+      todayEvents.push(cal.summary + ": " + event.summary);
+    });
+  });
+  return todayEvents;
 }
