@@ -5,22 +5,24 @@ const {
 } = require('googleapis');
 const SCOPES = ['https://www.googleapis.com/auth/calendar.readonly'];
 const TOKEN_PATH = 'token.json';
-let authToken;
-let hoursLeft = 25;
 
+// getAPIEvents(25).then(events => {
+//   console.log(events);
+// })
 
-
-
-  fs.readFile('./bin/credentials.json', async (err, content) => {
-    if (err) return console.log('Error loading client secret file:', err);
-    authorize(JSON.parse(content), async function (auth) {
-      hours = hoursLeft;
-      const cals = await getCalendarsAndFilter(auth);
-      const events = await getEvents(auth, cals, hours);
-      console.log(events);
-      return events;
+async function getAPIEvents(midnightTonight) {
+  return new Promise((resolve, reject) => {
+    fs.readFile('./bin/credentials.json', async (err, content) => {
+      if (err) return console.log('Error loading client secret file:', err);
+      authorize(JSON.parse(content), async (auth) => {
+        const calendars = await getCalendarsAndFilter(auth);
+        const events = await getEvents(auth, calendars, midnightTonight);
+        resolve(events);
+      });
     });
-  });
+  })
+}
+
 
 async function authorize(credentials, callback) {
   const {
@@ -38,21 +40,6 @@ async function authorize(credentials, callback) {
     callback(oAuth2Client);
   });
 }
-
-
-// *******************
-// 
-//  
-async function setAuthToken(oAuth2Client, hours) {
-  authToken = oAuth2Client;
-  const cals = await getCalendarsAndFilter(authToken);
-  const events = await getEvents(authToken, cals, hours);
-  console.log(events);
-}
-// 
-// 
-// **********************
-
 
 async function getAccessToken(oAuth2Client, callback) {
   const authUrl = oAuth2Client.generateAuthUrl({
@@ -87,42 +74,38 @@ async function getCalendarsAndFilter(auth) {
   });
   let allCalendars = [];
   const result = await calendar.calendarList.list();
-  result.data.items.forEach(function (cal) {
-    if ((cal.summary.indexOf("Contact") < 0)) {
-      if ((cal.summary.indexOf("Holiday") < 0)) {
-        allCalendars.push(cal);
+  for (let i = 0; i < result.data.items.length; i++) {
+    if ((result.data.items[i].summary.indexOf("Contact") < 0)) {
+      if ((result.data.items[i].summary.indexOf("Holiday") < 0)) {
+        allCalendars.push(result.data.items[i]);
       }
     }
-  });
+  }
   return allCalendars;
 }
 
-
-async function getEvents(auth, calendars) {
+async function getEvents(auth, calendars, midnightTonight) {
   let todayEvents = [];
-  const calendar = google.calendar({
+  const calendar = await google.calendar({
     version: 'v3',
     auth
   });
   for (let i = 0; i < calendars.length; i++) {
-    let date = new Date();
-    date.setTime(date.getTime() + (hoursLeft * 60 * 60 * 1000)); //search 25 hrs from now
-    date.toISOString();
     const result = await calendar.events.list({
       calendarId: calendars[i].id,
       timeMin: (new Date()).toISOString(),
-      timeMax: date,
+      timeMax: midnightTonight,
       orderBy: 'startTime',
       singleEvents: true
     });
     const events = await result.data.items;
     for (let j = 0; j < events.length; j++) {
-      todayEvents.push(calendars[i].summary + ": " + events[j].summary);
+      todayEvents.unshift(calendars[i].summary + ": " + events[j].summary);
     }
   }
   return todayEvents;
 }
 
 module.exports = {
-  // main: main
+  getAPIEvents: getAPIEvents
 }
