@@ -3,20 +3,24 @@ const readline = require('readline');
 const {
   google
 } = require('googleapis');
-
 const SCOPES = ['https://www.googleapis.com/auth/calendar.readonly'];
 const TOKEN_PATH = 'token.json';
 let authToken;
+let hoursLeft = 25;
 
-startGetCalendarEventsForToday();
 
 
-async function startGetCalendarEventsForToday() {
-  fs.readFile('./bin/credentials.json', (err, content) => {
+
+  fs.readFile('./bin/credentials.json', async (err, content) => {
     if (err) return console.log('Error loading client secret file:', err);
-    authorize(JSON.parse(content), setAuthToken);
+    authorize(JSON.parse(content), async function (auth) {
+      hours = hoursLeft;
+      const cals = await getCalendarsAndFilter(auth);
+      const events = await getEvents(auth, cals, hours);
+      console.log(events);
+      return events;
+    });
   });
-}
 
 async function authorize(credentials, callback) {
   const {
@@ -31,7 +35,7 @@ async function authorize(credentials, callback) {
   fs.readFile(TOKEN_PATH, async (err, token) => {
     if (err) return getAccessToken(oAuth2Client, callback);
     await oAuth2Client.setCredentials(JSON.parse(token));
-    await callback(oAuth2Client);
+    callback(oAuth2Client);
   });
 }
 
@@ -44,11 +48,11 @@ async function setAuthToken(oAuth2Client, hours) {
   const cals = await getCalendarsAndFilter(authToken);
   const events = await getEvents(authToken, cals, hours);
   console.log(events);
-  return events;
 }
 // 
 // 
 // **********************
+
 
 async function getAccessToken(oAuth2Client, callback) {
   const authUrl = oAuth2Client.generateAuthUrl({
@@ -93,7 +97,8 @@ async function getCalendarsAndFilter(auth) {
   return allCalendars;
 }
 
-async function getEvents(auth, calendars, hoursLeft) {
+
+async function getEvents(auth, calendars) {
   let todayEvents = [];
   const calendar = google.calendar({
     version: 'v3',
@@ -101,7 +106,7 @@ async function getEvents(auth, calendars, hoursLeft) {
   });
   for (let i = 0; i < calendars.length; i++) {
     let date = new Date();
-    date.setTime(date.getTime() + (25 * 60 * 60 * 1000)); //search 25 hrs from now
+    date.setTime(date.getTime() + (hoursLeft * 60 * 60 * 1000)); //search 25 hrs from now
     date.toISOString();
     const result = await calendar.events.list({
       calendarId: calendars[i].id,
@@ -116,4 +121,8 @@ async function getEvents(auth, calendars, hoursLeft) {
     }
   }
   return todayEvents;
+}
+
+module.exports = {
+  // main: main
 }

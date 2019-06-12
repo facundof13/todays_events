@@ -6,11 +6,9 @@ app.listen(3000, () => console.log('listening at 3000'));
 app.use(express.static('public'));
 
 
-app.get('/api', (request, response) => {
-  events.getAPIEvents(25)
-  .then(result => {
-    response.json(result);
-  });
+app.get('/api',  (request, response) => {
+  const todayEvents = events.main();
+  response.json(todayEvents);
 
 });
 
