@@ -6,13 +6,21 @@ const {
 const SCOPES = ['https://www.googleapis.com/auth/calendar.readonly'];
 const TOKEN_PATH = 'token.json';
 
-// getAPIEvents(25).then(events => {
-//   console.log(events);
-// })
+let tonightAtMidnight = new Date();
+tonightAtMidnight.setHours(24,0,0,0);
+tonightAtMidnight = tonightAtMidnight.toISOString();
+
+
+getAPIEvents(tonightAtMidnight).then(events => {
+  console.log(events);
+})
+.catch(err => {
+  console.log(err);
+})
 
 async function getAPIEvents(midnightTonight) {
   return new Promise((resolve, reject) => {
-    fs.readFile('./bin/credentials.json', async (err, content) => {
+    fs.readFile('.env', async (err, content) => {
       if (err) return console.log('Error loading client secret file:', err);
       authorize(JSON.parse(content), async (auth) => {
         const calendars = await getCalendarsAndFilter(auth);
