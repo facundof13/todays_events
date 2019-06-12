@@ -1,5 +1,5 @@
-bin/.json
 
+.DS_Store
 # Logs
 logs
 *.log
@@ -58,6 +58,7 @@ typings/
 
 # dotenv environment variables file
 .env
+.DS_Store
 
 # next.js build output
 .next
