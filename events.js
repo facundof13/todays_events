@@ -6,6 +6,8 @@ const {
 const SCOPES = ['https://www.googleapis.com/auth/calendar.readonly'];
 const TOKEN_PATH = 'token.json';
 
+
+// DEBUG LOCALLY
 // let tonightAtMidnight = new Date();
 // tonightAtMidnight.setHours(24,0,0,0);
 // tonightAtMidnight = tonightAtMidnight.toISOString();
@@ -16,6 +18,7 @@ const TOKEN_PATH = 'token.json';
 //   console.log(err);
 // })
 
+// Main function
 async function getAPIEvents(midnightTonight) {
   return new Promise((resolve, reject) => {
     fs.readFile('.env', async (err, content) => {
@@ -29,7 +32,7 @@ async function getAPIEvents(midnightTonight) {
   })
 }
 
-
+// Google provided function
 async function authorize(credentials, callback) {
   const {
     client_secret,
@@ -47,6 +50,7 @@ async function authorize(credentials, callback) {
   });
 }
 
+// Google provided function
 async function getAccessToken(oAuth2Client, callback) {
   const authUrl = oAuth2Client.generateAuthUrl({
     access_type: 'online',
@@ -72,7 +76,7 @@ async function getAccessToken(oAuth2Client, callback) {
   });
 }
 
-
+// Grab all calendars from user, filter out the Holiday and Contact calendars
 async function getCalendarsAndFilter(auth) {
   const calendar = google.calendar({
     version: 'v3',
@@ -90,6 +94,7 @@ async function getCalendarsAndFilter(auth) {
   return allCalendars;
 }
 
+// Loop through calendars and grab all events from today for each
 async function getEvents(auth, calendars, midnightTonight) {
   let todayEvents = [];
   const calendar = await google.calendar({
@@ -100,7 +105,7 @@ async function getEvents(auth, calendars, midnightTonight) {
     const result = await calendar.events.list({
       calendarId: calendars[i].id,
       timeMin: (new Date()).toISOString(),
-      timeMax: midnightTonight,
+      timeMax: midnightTonight, // this will let us check until 11:59pm tonight
       orderBy: 'startTime',
       singleEvents: true
     });
