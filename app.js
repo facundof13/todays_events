@@ -13,5 +13,4 @@ app.get('/api/:timeleft',  (request, response) => {
   })
 });
 
-
 module.exports = app;
